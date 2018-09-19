@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.4.1)
 
-add_library( native-lib
+add_library( ffmpegutil
              SHARED
-             src/main/cpp/native-lib.cpp )
+             src/main/cpp/ffmpegutil.c.cpp )
 
 find_library( log-lib
               log )
@@ -77,8 +77,7 @@ set_target_properties( swscale
 include_directories(libs/include)
 include_directories(src/main/cpp)
 
-target_link_libraries( native-lib
-                       avutil
+target_link_libraries( avutil
                        avcodec
                        avfilter
                        avformat
@@ -86,4 +85,5 @@ target_link_libraries( native-lib
                        postproc
                        swresample
                        swscale
+                       ffmpegutil
                        ${log-lib} )
