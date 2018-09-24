@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <android/log.h>
 
+#define LOGI(FORMAT, ...) __android_log_print(ANDROID_LOG_INFO,"jason",FORMAT,##__VA_ARGS__);
+#define LOGE(FORMAT, ...) __android_log_print(ANDROID_LOG_ERROR,"jason",FORMAT,##__VA_ARGS__);
+
 //封装格式
 #include "libavformat/avformat.h"
 //解码
@@ -10,22 +13,22 @@
 //缩放
 #include "libswscale/swscale.h"
 
-#define LOGI(FORMAT, ...) __android_log_print(ANDROID_LOG_INFO, "jerry", FORMAT,##__VA_ARGS__);
-#define LOGE(FORMAT, ...) __android_log_print(ANDROID_LOG_ERROR, "jerry", FORMAT,##__VA_ARGS__);
+JNIEXPORT void
+JNICALL
+Java_ndk_jerry_com_ffmpegfirst_FFmpegUtil_decode(
+        JNIEnv *env, jclass jcls, jstring input_jstr, jstring output_jstr) {
+    const char *input_cstr = (*env)->GetStringUTFChars(env, input_jstr, NULL);
+    const char *output_cstr = (*env)->GetStringUTFChars(env, output_jstr, NULL);
 
-JNIEXPORT void JNICALL Java_com_jerry_ndk_FFmpegUtil_decode(
-        JNIEnv *env, jclass jcls, jstring input_path, jstring output_path) {
-    const char *input_str = (*env)->NewStringUTF(env, input_path);
-    const char *output_str = (*env)->NewStringUTF(env, output_path);
-
-    //注册组件
+    //1.注册组件
     av_register_all();
+
     //封装格式上下文
     AVFormatContext *pFormatCtx = avformat_alloc_context();
 
     //2.打开输入视频文件
-    if (avformat_open_input(&pFormatCtx, input_str, NULL, NULL) != 0) {
-        LOGE("%s", "打开输入视频文件失败");
+    if (avformat_open_input(&pFormatCtx, input_cstr, NULL, NULL) != 0) {
+        LOGE("%s, %s", "打开输入视频文件失败", input_cstr);
         return;
     }
     //3.获取视频信息
@@ -74,9 +77,8 @@ JNIEXPORT void JNICALL Java_com_jerry_ndk_FFmpegUtil_decode(
     avpicture_fill((AVPicture *) yuvFrame, out_buffer, AV_PIX_FMT_YUV420P, pCodeCtx->width,
                    pCodeCtx->height);
 
-
     //输出文件
-    FILE *fp_yuv = fopen(output_str, "wb");
+    FILE *fp_yuv = fopen(output_cstr, "wb");
 
     //用于像素格式转换或者缩放
     struct SwsContext *sws_ctx = sws_getContext(
@@ -95,8 +97,8 @@ JNIEXPORT void JNICALL Java_com_jerry_ndk_FFmpegUtil_decode(
         if (got_frame) {
             //frame->yuvFrame (YUV420P)
             //转为指定的YUV420P像素帧
-            sws_scale(sws_ctx,
-                      frame->data, frame->linesize, 0, frame->height,
+            sws_scale(sws_ctx, (const uint8_t *const *) frame->data, frame->linesize, 0,
+                      frame->height,
                       yuvFrame->data, yuvFrame->linesize);
 
             //向YUV文件保存解码之后的帧数据
@@ -119,6 +121,6 @@ JNIEXPORT void JNICALL Java_com_jerry_ndk_FFmpegUtil_decode(
     avcodec_close(pCodeCtx);
     avformat_free_context(pFormatCtx);
 
-    (*env)->ReleaseStringUTFChars(env, input_path, input_str);
-    (*env)->ReleaseStringUTFChars(env, output_path, output_str);
+    (*env)->ReleaseStringUTFChars(env, input_jstr, input_cstr);
+    (*env)->ReleaseStringUTFChars(env, output_jstr, output_cstr);
 }
